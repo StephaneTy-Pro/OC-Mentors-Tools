@@ -1,7 +1,7 @@
 # OC-Mentor-Tools
 
 ![](https://img.shields.io/badge/build-pass-success)
-![](https://img.shields.io/badge/version-1.1-orange)
+![](https://img.shields.io/badge/version-0.1-orange)
 [![](https://img.shields.io/badge/slack-blueviolet)](https://app.slack.com/client/THPGYG8JJ/C018VLPFKG8/)
 
 ## Préambule
