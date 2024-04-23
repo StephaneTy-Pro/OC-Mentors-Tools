@@ -69,3 +69,27 @@ var tFundings = await ACCOUNTING.getFundings({id:'1Ko7nbOUrRHDoM2v_bxC85YuGBoao_
 var u =await ACCOUNTING.getBillableSessions('2024-03-01','2024-03-31', tFundings)
 // renvoie la facturation ligne a ligne des étudiants pour cette période
 ```
+A propos de GoogleSheet
+
+Format des données
+
+| name             | financed | self_paid | apprenticeship |
+|------------------|----------|-----------|----------------|
+| AA               | TRUE     | FALSE     | FALSE          |
+| BB               | FALSE    | FALSE     | TRUE           |
+
+...
+
+par défaut la première cellule(name) du tableau est attendue en B2 ; mais c'est paramétrable dans la fonction
+
+
+getFundings(params={})
+	params.id		: id de la feuille googlesheet
+	params.query 	: chaine de requete de la feuille googlesheet par défaut 'select B,C,D,E limit 5000'
+
+# Questions
+- Comment trouver l'id d'une feuille googlesheet
+> dans l'url, https://docs.google.com/spreadsheets/d/CECI_EST_MON_ID_GSHEET/edit?usp=sharing
+
+- La feuille doit elle impérativement avoir été partagée
+> Non
