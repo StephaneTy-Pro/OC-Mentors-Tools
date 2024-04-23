@@ -51,13 +51,14 @@ Préalable: Notez que tout se passe dans la console il est possible que par la s
 #### APIOC.getHistorySessionsBetween
 
 APIOC.getHistorySessionsBetween(sFrom, sTo, oOpts={})
+
 	sFrom : date au format texte
 	sTo	  : date au format texte
 	oOpts : objet js
 		n'est pas utilisé pour le moment mais devrait permettre de filtrer sur le type de sessions
-			LIFE_CYCLE_STATUS_CANCELED
-			LIFE_CYCLE_STATUS_COMPLETED
-			LIFE_CYCLE_STATUS_LATE_CANCELED
+			LIFE_CYCLE_STATUS_CANCELED 
+			LIFE_CYCLE_STATUS_COMPLETED 
+			LIFE_CYCLE_STATUS_LATE_CANCELED 
 			LIFE_CYCLE_STATUS_ABSENT
 Exemple
 
