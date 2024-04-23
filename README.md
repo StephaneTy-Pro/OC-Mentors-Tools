@@ -20,8 +20,10 @@ Il est possible de voir apparaitre des messages d'erreur dans la console
 
 Préalable: Notez que tout se passe dans la console il est possible que par la suite on puisse intéragir avec une ui
 
-### API OC
+L'API ne fonctionne que si vous êtes connectés, de fait *JAMAIS* je ne demande ni stocke de mot de passe
 
+### API OC
+- getMe
 - getUser
 - getUserAvailabilities
 - getUserEvents
@@ -47,6 +49,26 @@ Préalable: Notez que tout se passe dans la console il est possible que par la s
 - getProjectCourses
 - getProjectRessources
 - getProjectCourseSections
+
+#### APIOC.getMe
+
+APIOC.getMe()
+
+Pas de paramètre
+Renvoie les informations vous concernant
+
+#### APIOC.getUser
+
+APIOC.getUser(iId)
+
+iId : (entier) le numéro d'identification de l'utilisateur recherché
+Renvoie les informations vous concernant (sous réserve de droit d'y accéder)
+
+exemple
+```js
+var r = await APIOC.getUser(7688561);
+// il s'agit de mon id
+```
 
 #### APIOC.getHistorySessionsBetween
 
