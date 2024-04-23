@@ -1,16 +1,22 @@
-# Préambule
+# OC-Mentor-Tools
+
+![](https://img.shields.io/badge/build-pass-success)
+![](https://img.shields.io/badge/version-1.1-orange)
+[![](https://img.shields.io/badge/slack-blueviolet)](https://app.slack.com/client/THPGYG8JJ/C018VLPFKG8/)
+
+## Préambule
 
 Github réagissant très mal à ma configuration exotique, je ne peux pas garantir que les fichiers github seront àn jour.
 Je vais créer un autre dépôt sur codeberg
 
-# Comment ça fonctionne
+## Comment ça fonctionne
 
-## Installation de l'extension
+### Installation de l'extension
 
 Cf installation d'une extension en mode dev
 Pour firefox dans l'url saisissez about:debugging et séléctionnez l'archive que vous venez de télécharger
 
-## Remarques
+#### Remarques
 
 Il est possible de voir apparaitre des messages d'erreur dans la console
  - ceux qui vous disent que la constante est déjà définie : c'est normal et c'est du à la double injection (au chargement de l'addon, et au chargement de la page) ; ça n'apparait qu'après chargement de l'addon
@@ -82,15 +88,16 @@ oOpts : objet javascript qui n'est pas utilisé pour le moment mais devrait perm
 - LIFE_CYCLE_STATUS_LATE_CANCELED 
 - LIFE_CYCLE_STATUS_ABSENT
 
-*Notes*
+**Notes**
 
 Cette fonction est assez longue car l'API OpenClassrooms renvoie les données historiques depuis l'origine et par lot de 20 (mais on peut séléctionner l'indice de départ). De fait on a une fonction récursive qui crée des lots de 100 et sonde pour touver les bons indices
 
-*Limite*
+**Limite**
+
 Pour éviter des récursion infinies en cas de bug j'ai limité à 10 itérations de traitement pour le moment.
 
 
-Exemple
+**Exemple**
 
 ```js
 var u=await APIOC.getHistorySessionsBetween('2024-03-01','2024-03-31')
@@ -103,7 +110,7 @@ var u=await APIOC.getHistorySessionsBetween('2024-03-01','2024-03-31')
 - getBillableSessions
 - getPreBill
 
-Exemple
+**Exemple**
 ```js
 // dans le cas où les tarifs des étudiants sont stockés sur une feuille googlesheet
 var tFundings = await ACCOUNTING.getFundings({id:'1Ko7nbOUrRHDoM2v_bxC85YuGBoao_IV2F3RLnqzMVgc'})
@@ -111,9 +118,10 @@ var tFundings = await ACCOUNTING.getFundings({id:'1Ko7nbOUrRHDoM2v_bxC85YuGBoao_
 var u =await ACCOUNTING.getBillableSessions('2024-03-01','2024-03-31', tFundings)
 // renvoie la facturation ligne a ligne des étudiants pour cette période
 ```
-A propos de GoogleSheet
 
-Format des données
+## A propos de GoogleSheet
+
+### Format des données
 
 | name             | financed | self_paid | apprenticeship |
 |------------------|----------|-----------|----------------|
@@ -124,14 +132,25 @@ Format des données
 
 par défaut la première cellule(name) du tableau est attendue en B2 ; mais c'est paramétrable dans la fonction
 
+### Paramètres
 
 getFundings(params={})
 	params.id		: id de la feuille googlesheet
 	params.query 	: chaine de requete de la feuille googlesheet par défaut 'select B,C,D,E limit 5000'
 
-# Questions
-- Comment trouver l'id d'une feuille googlesheet
-> dans l'url, https://docs.google.com/spreadsheets/d/CECI_EST_MON_ID_GSHEET/edit?usp=sharing
+## Questions
 
-- La feuille doit elle impérativement avoir été partagée
-> Non
+### API ACCOUNTING
+
+>Pourquoi dois je saisir le mode de financement de l'étudiant
+
+Parce que cette information n'est pas retournée dans l'API j'ai bien tenté d'exploiter celle qu'on trouve dans la fiche étudiant mais outre le fait qu'elle soit partielle (on ne sait rien des apprentis) mais sans succès (généation par js compressé après chargement de page)
+
+
+>Comment trouver l'id d'une feuille googlesheet
+
+Dans l'url, https://docs.google.com/spreadsheets/d/CECI_EST_MON_ID_GSHEET/edit?usp=sharing
+
+> La feuille doit elle impérativement avoir été partagée
+
+Non
