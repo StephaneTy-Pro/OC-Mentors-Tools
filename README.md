@@ -110,6 +110,16 @@ var u=await APIOC.getHistorySessionsBetween('2024-03-01','2024-03-31')
 - getBillableSessions
 - getPreBill
 
+
+#### ACCOUNTING.getFundings
+
+#### ACCOUNTING.getBillableSessions
+
+#### ACCOUNTING.getPreBill
+
+Cette fonction permet d'obtenir un objet qui sera téléchargé puis exploité par un modele de facture généré par typst [typst](https://github.com/typst/typst). Prendre la version [binaire](https://github.com/typst/typst/releases) dans la section "Assets" qui vous convient
+
+
 **Exemple**
 ```js
 // dans le cas où les tarifs des étudiants sont stockés sur une feuille googlesheet
