@@ -52,14 +52,22 @@ Préalable: Notez que tout se passe dans la console il est possible que par la s
 
 APIOC.getHistorySessionsBetween(sFrom, sTo, oOpts={})
 
-	sFrom : date au format texte
-	sTo	  : date au format texte
-	oOpts : objet js
-		n'est pas utilisé pour le moment mais devrait permettre de filtrer sur le type de sessions
-			LIFE_CYCLE_STATUS_CANCELED 
-			LIFE_CYCLE_STATUS_COMPLETED 
-			LIFE_CYCLE_STATUS_LATE_CANCELED 
-			LIFE_CYCLE_STATUS_ABSENT
+sFrom : date au format texte
+sTo	  : date au format texte
+oOpts : objet javascript qui n'est pas utilisé pour le moment mais devrait permettre de filtrer sur le type de sessions
+- LIFE_CYCLE_STATUS_CANCELED 
+- LIFE_CYCLE_STATUS_COMPLETED 
+- LIFE_CYCLE_STATUS_LATE_CANCELED 
+- LIFE_CYCLE_STATUS_ABSENT
+
+*Notes*
+
+Cette fonction est assez longue car l'API OpenClassrooms renvoie les données historiques depuis l'origine et par lot de 20 (mais on peut séléctionner l'indice de départ). De fait on a une fonction récursive qui crée des lots de 100 et sonde pour touver les bons indices
+
+*Limite*
+Pour éviter des récursion infinies en cas de bug j'ai limité à 10 itérations de traitement pour le moment.
+
+
 Exemple
 
 ```js
