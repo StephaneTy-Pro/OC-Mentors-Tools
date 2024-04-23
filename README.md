@@ -63,6 +63,11 @@ APIOC.getMe()
 Pas de paramètre
 Renvoie les informations vous concernant
 
+exemple
+```js
+var r = await APIOC.getMe();)
+```
+
 #### APIOC.getUser
 
 APIOC.getUser(iId)
@@ -113,7 +118,31 @@ var u=await APIOC.getHistorySessionsBetween('2024-03-01','2024-03-31')
 
 #### ACCOUNTING.getFundings
 
+Renvoir un tableau avec la liste des mode de facturation de vos étudiants
+
+```js
+// dans le cas où les tarifs des étudiants sont stockés sur une feuille googlesheet
+var tFundings = await ACCOUNTING.getFundings({id:'1Ko7nbOUrRHDoM2v_bxC85YuGBoao_IV2F3RLnqzMVgc'})
+```
+
+
+
 #### ACCOUNTING.getBillableSessions
+
+Renvoie la liste des sessions facturables d'une période
+
+
+**Exemple**
+```js
+// dans le cas où les tarifs des étudiants sont stockés sur une feuille googlesheet
+var tFundings = await ACCOUNTING.getFundings({id:'1Ko7nbOUrRHDoM2v_bxC85YuGBoao_IV2F3RLnqzMVgc'})
+// récupère les codes tarifs de vos étudiants
+var u = await ACCOUNTING.getBillableSessions('2024-03-01','2024-03-31', tFundings)
+// renvoie la facturation ligne a ligne des étudiants pour cette période
+```
+
+**Note**
+Dans cette version on prend soin de vérifier sur le tableau récapitulatif d'OpenClassrooms googlsheet de 1500 lignes) les niveaux de sessions, parfois ceux ci sont absents ce qui explique les message warning du log.
 
 #### ACCOUNTING.getPreBill
 
@@ -149,6 +178,12 @@ getFundings(params={})
 	params.query 	: chaine de requete de la feuille googlesheet par défaut 'select B,C,D,E limit 5000'
 
 ## Questions
+
+### Generales
+
+> Pourquoi certaines fois les résultats sont immédiats
+
+Parce que les résultats de certaines fonctions lentes (typiquement liste de session) sont stockées en cache, le cache est injecté directement dans la page web ; donc tant que vous ne rafraichissez pas la page, le cache reste actif.
 
 ### API ACCOUNTING
 
