@@ -20,7 +20,7 @@ Il est possible de voir apparaitre des messages d'erreur dans la console
 
 Préalable: Notez que tout se passe dans la console il est possible que par la suite on puisse intéragir avec une ui
 
-Fonctions existantes pour le moment dans l'ensemble APIOC
+### API OC
 
 - getUser
 - getUserAvailabilities
@@ -48,14 +48,25 @@ Fonctions existantes pour le moment dans l'ensemble APIOC
 - getProjectRessources
 - getProjectCourseSections
 
+#### APIOC.getHistorySessionsBetween
+
+APIOC.getHistorySessionsBetween(sFrom, sTo, oOpts={})
+	sFrom : date au format texte
+	sTo	  : date au format texte
+	oOpts : objet js
+		n'est pas utilisé pour le moment mais devrait permettre de filtrer sur le type de sessions
+			LIFE_CYCLE_STATUS_CANCELED
+			LIFE_CYCLE_STATUS_COMPLETED
+			LIFE_CYCLE_STATUS_LATE_CANCELED
+			LIFE_CYCLE_STATUS_ABSENT
 Exemple
 
 ```js
-var u =await APIOC.getHistorySessionsBetween('2024-03-01','2024-03-31')
+var u=await APIOC.getHistorySessionsBetween('2024-03-01','2024-03-31')
 // u contiendra la liste des sessions comprises entre ces deux dates
 ```
 
-API ACCOUNTING
+### API ACCOUNTING
 
 - getFundings
 - getBillableSessions
