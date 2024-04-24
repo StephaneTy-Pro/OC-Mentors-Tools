@@ -4,7 +4,7 @@
  *
  * FILE: /tmp/_openclassroom.api.umd.js
  * Generated at	
- * 	(fr)		lundi 22 avril 2024
+ * 	(fr)		mercredi 24 avril 2024
  */
 
 // ------------------------------------------------------------------- READAXIOS
@@ -619,7 +619,7 @@ const isArray = _ => Array.isArray(_);
  *
  * FILE: ypp.input_file()
  * Generated at	
- * 	(fr)		lundi 22 avril 2024
+ * 	(fr)		mercredi 24 avril 2024
  */
 
 /**
@@ -1402,118 +1402,67 @@ const createAPIFactory = (create, interceptor
 	 * iFrom: l'indice dans le tableau résultat des données de l'api (la totalité des résultats en base calculé à partir de 0 le plus ancien résultat retourné par l'historique)
 	 */
 
-	const _calculateNextFrom = (iLeft, iDelta, iSlice, iFrom) => {
+	const _calculateNextFrom = (aData, sFrom, sTo, iFrom, iLimitTo=666, iSlice=100, iFromLastSuccessfullTry=0) => {
 
-		console.log("%c%s:getHistorySessionsBetween()%c enter _calculateNextFrom()",C.APP_DEBUG_STYLE,header.NAME,"")
+		const bVerbose = true;
+
+		if(bVerbose){console.log("%c%s:getHistorySessionsBetween()%c enter _calculateNextFrom()",C.APP_DEBUG_STYLE,header.NAME,"");}
+		const [iLeft, iRight, iDelta] = _sonar(aData, sFrom, sTo);
+		if(bVerbose){console.log("Ecart entre le jour demandé et la date de début du lot:%d, étendue du lot:%d (jrs), la taille d'un lot:%d, la valeur de départ dans la table historique:%d"
+			,iLeft, iDelta, iSlice, iFrom);}
 
 		if (iLeft < 0) {
 			if (Math.abs(iLeft) < iDelta) {
+				if(bVerbose){console.log("On a pas atteint la date de début de lot, toutefois la taille du lot en jours:%d est supérieure à la distance entre le jour demandé et le premier jour du lot : %d , on va donc trouver le jour demandé dans le lot", iDelta, iLeft);}
 				// je retourne la valeur initiale du tableau ce qui fait qu'on arrête de tourner
 				return iFrom;
 			} else {
+				if(bVerbose){console.log("On n'a pas encore atteint la date de début du lot, il faudra se déplacer plus avant dans l'historique");}
+				if(bVerbose){console.log("L'estimation de l'index se base sur le nombre de jours manquants / durée moyen d'un lot");}
+				if(bVerbose){console.log("Je dois avancer de %d jrs et la durée moyenne de ce lot est %d jrs soit %d lots de (%d sessions) plus loin", Math.abs(iLeft), iDelta, Math.round((Math.abs(iLeft) / iDelta)), iSlice );}
+				if(bVerbose){console.log("Calcul = round((abs(%d)/%d)) * %d + %d = %d", iLeft, iDelta, iSlice, iFrom, Math.round((Math.abs(iLeft) / iDelta)) * iSlice + iFrom);}
 				return Math.round((Math.abs(iLeft) / iDelta)) * iSlice + iFrom;
 			}
 		} else if (iLeft > 0) {
+			if(bVerbose){console.log("La date de début de lot est supérieure à la date demandée, il faudra revenir en arrière");}
+			if(bVerbose){console.log("Calcul %d - (round(%d/%d) [avec un mini a 1jr] * %d)", iFrom, iLeft, iDelta, iSlice);}
 			let iDays = Math.round(iLeft / iDelta); // nombre de jours de sessions à raison de la moyenne journalière de sessions
 			if(iDays < 1){ iDays = 1; }
 			let iNextFrom = iFrom - (iDays * iSlice);
 			if (iNextFrom < 0) {
 				throw new Error(`ERROR iNextFrom=${iNextFrom} which was < 0`);
 			}
-			return iNextFrom;
 		}
+		if (bVerbose){ console.log("En première estimation on passerait de la valeur courante de début de lot:%d à la valeur future :%d",iFrom, iNextFrom); }
+		// le probleme c'est que si j'inclus la tranche alors je ne sortirais jamais les lots de la derniere tranche
+		// mais je ne peux pas non plus m'arreter si je suis sur la derniere tranche je dois pouvoir boucler en arriere
+		if (iNextFrom > iLimitTo) {
+			iNextFrom = iLimitTo - iSlice;
+			const iGuess =  Math.round(((iNextFrom - iFromLastSuccessfullTry) / 3) / 10) * 10;
+			if (iGuess < iSlice){
+				//console.warn("On a un probleme l'écart estimé %d est trop petit (inférieur à une tranche), on va utiliser %d (une tranche) à soustraire à %d(iNextFrom)" ,iGuess, iSlice, iNextFrom);
+				iNextFrom = iNextFrom - iSlice;
+			} else {
+				//console.warn("Je pense que %d est un bon compromis à soustraire à %d (iNextFrom)" ,iGuess, iNextFrom);
+				iNextFrom = iNextFrom - iGuess;
+			}
+			if(bVerbose){ console.warn("Second estimation said set pouriNextFrom from :%d  to %d",iFrom,iNextFrom); }
+
+		} else {
+			if(bVerbose){ console.log("iNextFrom: %d + iSlice:%d <= iLimitTo: %d  on garde donc l'estimation de base",iNextFrom, iSlice, iLimitTo); }
+		}
+
+
+
+		return iNextFrom;
+
 	};
 
-	/**
-	 * _calculateNextTo
-	 */
-
-	const _calculateNextTo = (iRight, iDelta, iSlice, iTo) => {
-
-		console.log("%c%s:getHistorySessionsBetween()%c enter calculateNextTo()",C.APP_DEBUG_STYLE,header.NAME,"");
-		// si j'ai un nombre négatif c'est que je n'ai pas assez reculé
-		if (iRight < 0) {
-			return Math.round((Math.abs(iRight) / iDelta)) * iSlice + iTo;
-		}
-
-	  return iTo;
-	};
-
-	/**
-	 * _sonar
-	 */
-
-	const _sonar = function(aSessions, sFrom, sTo) {
-
-		// on a besoin de s'assurer que les données soient bien triées sur la date de session
-		aSessions.sort((a, b) => dayjs(a.sessionDate).unix() - dayjs(b.sessionDate).unix());
-
-		// NOTESTT: par précaution on encadre un jour plus tot et un jour plus tard pour éviter de passer a côté d'un jour dans un lot précédent ou suivant
-
-		const dtFrom = dayjs(sFrom);
-		const dtFromOneDayBefore = dtFrom.subtract(1, 'days');
-		const dtTo = dayjs(sTo);
-		const dtToOneDayAfter = dtTo.add(1, 'days');
-		const dtResFrom = dayjs(aSessions[0].sessionDate);
-		const dtResTo = dayjs(aSessions[aSessions.length - 1].sessionDate);
-
-
-		// nombre de jour nécessaire pour compenser la partie gauche de la borne >0 =
-
-		//const iLeft = dtResFrom.diff(dtFrom, 'day');
-		const iLeft = dtResFrom.diff(dtFromOneDayBefore, 'day');
-		//const iRight = dtResTo.diff(dtTo, 'day');
-		const iDelta = dtResTo.diff(dtResFrom, 'day'); // écart en jour dans le lot
-		const iRight = dtResTo.diff(dtToOneDayAfter, 'day');
-		return [iLeft, iRight, iDelta];
-
-	}
-
-
-// HELPERS
-// verifie que les données soient bien incluses dans le tableau
-// renvoie
-//  [O] TRUE si la date de début de l'échantillon est identique ou antérieure à la date de début de période recherchée
-//  [1] TRUE si la date de début de l'échantillon est identique ou postérieure à la date de début de période recherchée
-	const _checkRange = function(aData,sFrom, sTo){
-
-		test.assert(
-			Array.isArray(aData),
-			'data must be an array',
-			TypeError
-		);
-
-		const dtFrom = dayjs(sFrom);
-		const dtFromOneDayBefore = dtFrom.subtract(1, 'days');
-		const dtTo = dayjs(sTo);
-		const dtToOneDayAfter = dtTo.add(1, 'days');
-
-		if(
-			aData.length > 1
-			&& aData[0].hasOwnProperty('sessionDate')
-			&& aData[aData.length-1].hasOwnProperty('sessionDate')
-		){
-			const dtDataFirst = dayjs(aData[0].sessionDate);
-			const dtDataLast = dayjs(aData[aData.length-1].sessionDate);
-
-			const _b1 = dtDataFirst.isSameOrBefore(dtFromOneDayBefore);
-			const _b2 = dtDataLast.isSameOrAfter(dtToOneDayAfter);
-
-			console.log("%c%s%c Dates: Echantillon:%s-%s Recherchées %s-%s, isSameOrBefore:%o-isSameOrAfter:%o","","checkRange()",""
-			  ,dtDataFirst.format("DD/MM/YYYY"),dtDataLast.format("DD/MM/YYYY")
-			  ,dtFrom.format("DD/MM/YYYY"),dtTo.format("DD/MM/YYYY")
-			  , _b1, _b2
-			);
-
-			return [_b1,_b2];
-		}
-		return[false, false];
-
-	}
-
-	const _guessNextIFrom = function(aData, sFrom, sTo, iFrom, iLimitTo=666, iSlice=100, iFromLastSuccessfullTry=0){
-
-		const bVerbose = false;
+/*
+function(aData, sFrom, sTo, iFrom, iLimitTo=666, iSlice=100, iFromLastSuccessfullTry=0){
+*
+*
+*
 		if (bVerbose){ console.log("_guessNextIFrom() cette fonction tente de deviner le meilleur iFrom, commençons par le calculer");}
 
 		const [iLeft, iRight, iDelta] = _sonar(aData, sFrom, sTo);
@@ -1539,13 +1488,176 @@ const createAPIFactory = (create, interceptor
 			if(bVerbose){ console.warn("Second estimation said set pouriNextFrom from :%d  to %d",iFrom,iNextFrom); }
 
 		} else {
-			if(bVerbose){ console.log("iNextFrom: %d + iSlice:%d <= iLimitTo: %d continue...",iNextFrom, iSlice, iLimitTo); }
+			if(bVerbose){ console.log("iNextFrom: %d + iSlice:%d <= iLimitTo: %d  on garde donc l'estimation de base",iNextFrom, iSlice, iLimitTo); }
+		}
+
+		return iNextFrom;
+*
+ * */
+
+	/**
+	 * _calculateNextTo
+	 */
+/*
+	const _calculateNextTo = (iRight, iDelta, iSlice, iTo) => {
+
+		const bVerbose = true;
+
+		if(bVerbose){console.log("%c%s:getHistorySessionsBetween()%c enter calculateNextTo()",C.APP_DEBUG_STYLE,header.NAME,"");}
+		// si j'ai un nombre négatif c'est que je n'ai pas assez reculé
+		if (iRight < 0) {
+			if(bVerbose){console.log("La date de fin de lot est inférieur à la date demandée on agrandit d'une tranche");}
+			if(bVerbose){console.log("Calcul round((abs(%d)/%d)) * %d + %d", iRight, iDelta, iSlice, iTo);}
+			return Math.round((Math.abs(iRight) / iDelta)) * iSlice + iTo;
+		}
+
+	  return iTo;
+	};
+*/
+	const _calculateNextTo = function(aData, sFrom, sTo, iTo, iLimitTo=666, iSlice=100){
+
+		const bVerbose = true;
+		if(bVerbose){console.log("%c%s:getHistorySessionsBetween()%c enter calculateNextTo()",C.APP_DEBUG_STYLE,header.NAME,"");}
+		const [iLeft, iRight, iDelta] = _sonar(aData, sFrom, sTo);
+
+
+		// si j'ai un nombre négatif c'est que je n'ai pas assez reculé
+		if (iRight < 0) {
+			if(bVerbose){console.log("La date de fin de lot est inférieur à la date demandée on agrandit d'une tranche");}
+			if(bVerbose){console.log("Calcul round((abs(%d)/%d)) * %d + %d", iRight, iDelta, iSlice, iTo);}
+			return Math.round((Math.abs(iRight) / iDelta)) * iSlice + iTo;
+		}
+
+		if(iNextTo > iLimitTo){
+			 iNextTo = iLimitTo;
+			 if(bVerbose){console.log("%c%s%c On a atteint la limite on ramene la valeur à la limite soit %d", C.APP_DEBUG_STYLE,header.NAME,"", iNextTo);}
+		}
+
+		return iNextTo;
+
+	}
+
+	/**
+	 * _sonar
+	 */
+
+	const _sonar = function(aSessions, sFrom, sTo) {
+
+		const bVerbose = true;
+
+		// on a besoin de s'assurer que les données soient bien triées sur la date de session
+		aSessions.sort((a, b) => dayjs(a.sessionDate).unix() - dayjs(b.sessionDate).unix());
+
+		// NOTESTT: par précaution on encadre un jour plus tot et un jour plus tard pour éviter de passer a côté d'un jour dans un lot précédent ou suivant
+
+		const dtFrom = dayjs(sFrom);
+		const dtFromOneDayBefore = dtFrom.subtract(1, 'days');
+		const dtTo = dayjs(sTo);
+		const dtToOneDayAfter = dtTo.add(1, 'days');
+		const dtResFrom = dayjs(aSessions[0].sessionDate);
+		const dtResTo = dayjs(aSessions[aSessions.length - 1].sessionDate);
+
+		if(bVerbose){console.log("_sonar(): dtFromOneDayBefore %s  dtToOneDayAfter %s", dtFromOneDayBefore.format("DD/MM/YYYY"), dtToOneDayAfter.format("DD/MM/YYYY") );}
+
+		// nombre de jour nécessaire pour compenser la partie gauche de la borne >0 =
+
+		//const iLeft = dtResFrom.diff(dtFrom, 'day');
+		const iLeft = dtResFrom.diff(dtFromOneDayBefore, 'day');
+		//const iRight = dtResTo.diff(dtTo, 'day');
+		const iDelta = dtResTo.diff(dtResFrom, 'day'); // écart en jour dans le lot
+		const iRight = dtResTo.diff(dtToOneDayAfter, 'day');
+		/*
+		if(bVerbose){console.log("iLeft:  Ecart en jour entre la date de début du lot:%s - date début demandée %s = %d jours", dtResFrom.format('DD/MM/YYYY'), dtFrom.format('DD/MM/YYYY'), iLeft);}
+		if(bVerbose){console.log("iRight: Ecart en jour entre la date de fin du lot:%s   - date fin demandée %s   = %d jours", dtResTo.format('DD/MM/YYYY'), dtTo.format('DD/MM/YYYY'), iRight);}
+		*/
+		// version avec des bornes début et fin augmentées
+		if(bVerbose){console.log("iLeft:  Ecart en jour entre la date de début du lot:%s - date début(-1jr) demandée %s = %d jours", dtResFrom.format('DD/MM/YYYY'), dtFromOneDayBefore.format('DD/MM/YYYY'), iLeft);}
+		if(bVerbose){console.log("iRight: Ecart en jour entre la date de fin du lot:%s   - date fin demandée(+1jr) %s   = %d jours", dtResTo.format('DD/MM/YYYY'), dtToOneDayAfter.format('DD/MM/YYYY'), iRight);}
+		if(bVerbose){console.log("iDelta: Ecart en jour entre la date de début du lot:%s - date de fin de lot %s  = %d jours", dtResFrom.format('DD/MM/YYYY'), dtResTo.format('DD/MM/YYYY'), iDelta);}
+		return [iLeft, iRight, iDelta];
+
+	}
+
+
+// HELPERS
+// verifie que les données soient bien incluses dans le tableau
+// renvoie
+//  [O] TRUE si la date de début de l'échantillon est identique ou antérieure à la date de début de période recherchée
+//  [1] TRUE si la date de début de l'échantillon est identique ou postérieure à la date de début de période recherchée
+	const _checkRange = function(aData,sFrom, sTo){
+
+		const bVerbose = true;
+
+		test.assert(
+			Array.isArray(aData),
+			'data must be an array',
+			TypeError
+		);
+
+		const dtFrom = dayjs(sFrom);
+		const dtFromOneDayBefore = dtFrom.subtract(1, 'days');
+		const dtTo = dayjs(sTo);
+		const dtToOneDayAfter = dtTo.add(1, 'days');
+
+		if(
+			aData.length > 1
+			&& aData[0].hasOwnProperty('sessionDate')
+			&& aData[aData.length-1].hasOwnProperty('sessionDate')
+		){
+			const dtDataFirst = dayjs(aData[0].sessionDate);
+			const dtDataLast = dayjs(aData[aData.length-1].sessionDate);
+
+			const _b1 = dtDataFirst.isSameOrBefore(dtFromOneDayBefore);
+			const _b2 = dtDataLast.isSameOrAfter(dtToOneDayAfter);
+
+			if(bVerbose){console.log("%c%s%c Dates: Echantillon:%s-%s Recherchées %s-%s, isSameOrBefore:%o-isSameOrAfter:%o","","checkRange()",""
+			  ,dtDataFirst.format("DD/MM/YYYY"),dtDataLast.format("DD/MM/YYYY")
+			  ,dtFrom.format("DD/MM/YYYY"),dtTo.format("DD/MM/YYYY")
+			  , _b1, _b2
+			);}
+
+			return [_b1,_b2];
+		}
+		return[false, false];
+
+	}
+/*
+	const _guessNextIFrom = function(aData, sFrom, sTo, iFrom, iLimitTo=666, iSlice=100, iFromLastSuccessfullTry=0){
+
+		const bVerbose = true;
+
+		if (bVerbose){ console.log("_guessNextIFrom() cette fonction tente de deviner le meilleur iFrom, commençons par le calculer");}
+
+		const [iLeft, iRight, iDelta] = _sonar(aData, sFrom, sTo);
+		if (bVerbose){ console.log("_sonar() return this values iLeft: %d iDelta: %d iSlice %d iFrom %d", iLeft, iDelta, iSlice, iFrom); }
+
+		iNextFrom = _calculateNextFrom(iLeft, iDelta, iSlice, iFrom);
+		if (bVerbose){ console.log("First estimation said : from Previously From:%d go to NextFrom:%d",iFrom,iNextFrom); }
+
+		// prevoir un garde fou pour nextFrom
+		//if (iNextFrom+iSlice > iLimitTo) {
+		// le probleme c'est que si j'inclus la tranche alors je ne sortirais jamais les lots de la derniere tranche
+		// mais je ne peux pas non plus m'arreter si je suis sur la derniere tranche je dois pouvoir boucler en arriere
+		if (iNextFrom > iLimitTo) {
+			iNextFrom = iLimitTo - iSlice;
+			const iGuess =  Math.round(((iNextFrom - iFromLastSuccessfullTry) / 3) / 10) * 10;
+			if (iGuess < iSlice){
+				//console.warn("On a un probleme l'écart estimé %d est trop petit (inférieur à une tranche), on va utiliser %d (une tranche) à soustraire à %d(iNextFrom)" ,iGuess, iSlice, iNextFrom);
+				iNextFrom = iNextFrom - iSlice;
+			} else {
+				//console.warn("Je pense que %d est un bon compromis à soustraire à %d (iNextFrom)" ,iGuess, iNextFrom);
+				iNextFrom = iNextFrom - iGuess;
+			}
+			if(bVerbose){ console.warn("Second estimation said set pouriNextFrom from :%d  to %d",iFrom,iNextFrom); }
+
+		} else {
+			if(bVerbose){ console.log("iNextFrom: %d + iSlice:%d <= iLimitTo: %d  on garde donc l'estimation de base",iNextFrom, iSlice, iLimitTo); }
 		}
 
 		return iNextFrom;
 
 	}
-
+*/
 	/**
 	 * getHistorySessionsBetween : get Sessions from history between two dates
 	 *
@@ -1644,19 +1756,39 @@ const createAPIFactory = (create, interceptor
 					// j'ai des résultats
 					// on commence par les trier sur la date
 					_r = _r.sort((a, b) => dayjs(a.sessionDate).unix() - dayjs(b.sessionDate).unix());
+					console.log("J'ai des retours de la base triés: %o", _r);
 					const _bStop = _checkRange( _r, sFrom, sTo);
 
 					if (_bStop[0] === true && _bStop[1] == true){
-						console.log("La période recherchée est dans la tranche retournée -> STOP");
+						console.log("%c%s%c ,la période recherchée est dans la tranche retournée -> STOP",C.APP_DEBUG_STYLE,sHeader,"");
 						break;
 					}
 
+					console.log("%c%s%c, la période recherchée n'est pas dans la tranche retournée -> CONTINUE",C.APP_DEBUG_STYLE,sHeader,"");
 					if( _r.length < iSlice ){
 						//1 - j'ai atteint la limite du tableau = j'ai reçu des données mais moins qu'une tranche complète
+						console.log("je suis à la limite du tableau retourné par la BDD, il n'y a plus d'enregistrements, mise à jour de la limite");
 						_setHistorySize( iFrom+_r.length );
 
-						iNextFrom =  _guessNextIFrom( _r, sFrom, sTo, iFrom, iLimitTo, iSlice, iFromLastSuccessfullTry);
-						iNextTo = iNextFrom + iSlice;
+						iNextFrom =  _calculateNextFrom( _r, sFrom, sTo, iFrom, iLimitTo, iSlice, iFromLastSuccessfullTry);
+
+						// sortie si les bornes ne changent plus
+						if (iFrom == iNextFrom) {
+							if(bVerbose){console.log("%c%s%c Il y a égalité entre la borne de debut courant et debut futur, calculons donc la borne de fin", C.APP_DEBUG_STYLE,sHeader,"",);}
+
+							iNextTo = _calculateNextTo(_r, sFrom, sTo, iTo, iLimitTo, iSlice);
+
+							if (iTo == iNextTo) {
+								console.log("%c%s%c L'index de fin précédent et le futur sont identiques, on s'arrête", C.APP_DEBUG_STYLE,sHeader,"",);
+								break;
+							}
+
+						} else {
+
+							iNextTo = iNextFrom + iSlice;
+							console.log("Les éléments demandés NE sont PAS dans la tranche retournée on continue sur les tranches (%d,%d)", iNextFrom, iNextTo);
+
+						}
 					}
 
 					// 2 - j'ai des résultat mais n'ai pas atteint la limite du tableau
@@ -1665,20 +1797,22 @@ const createAPIFactory = (create, interceptor
 						// Mise à jour de la dernière tentative réussie avec une section/tranche complete
 						if (iFromLastSuccessfullTry < iFrom){
 							iFromLastSuccessfullTry = iFrom;
-							console.log("%c>>>>>>>>>>>>>%c Mise a jour de iFromLastSuccessfullTry avec %d", "background-color:black;color:white","",iFromLastSuccessfullTry);
+							if(bVerbose){console.log("%c>>>>>>>>>>>>>%c Mise a jour de iFromLastSuccessfullTry avec %d", "background-color:black;color:white","",iFromLastSuccessfullTry);}
 						}
 
-						iNextFrom =  _guessNextIFrom( _r, sFrom, sTo, iFrom, iLimitTo, iSlice, iFromLastSuccessfullTry);
+						iNextFrom =  _calculateNextFrom( _r, sFrom, sTo, iFrom, iLimitTo, iSlice, iFromLastSuccessfullTry);
 						iNextTo = iNextFrom + iSlice;
+
+						if(bVerbose){console.log("%c%s%c On vérifie que l'index de début de la prochaine itération soit différente de l'actuelle ; courant:%d futur:%d", C.APP_DEBUG_STYLE,sHeader,"",iFrom, iNextFrom);}
 
 						// sortie si les bornes ne changent plus
 						if (iFrom == iNextFrom) {
-							const [iLeft, iRight, iDelta] = _sonar(_r, sFrom, sTo);
-							iNextTo = _calculateNextTo(iRight, iDelta, iSlice, iTo);
-							if(iNextTo > iLimitTo){ iNextTo = iLimitTo; }
+							if(bVerbose){console.log("%c%s%c Il y a égalité, calculons donc la borne de fin", C.APP_DEBUG_STYLE,sHeader,"",);}
+
+							iNextTo = _calculateNextTo(_r, sFrom, sTo, iTo, iLimitTo, iSlice);
 
 							if (iTo == iNextTo) {
-								// end
+								console.log("%c%s%c L'index de fin précédent et le futur sont identiques, on s'arrête", C.APP_DEBUG_STYLE,sHeader,"",);
 								break;
 							}
 
