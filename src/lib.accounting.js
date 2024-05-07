@@ -2,6 +2,11 @@
  *
  *
  *  * DEPENDENCIES: ocapi, jsonata
+ *
+ * 	* HISTORY
+ * 		202404.001 correction d'un bug si le path n'est pas trouvé
+ * 		202404.001 Initial
+ *
  */
 
 /*
@@ -34,7 +39,7 @@ if (self instanceof DedicatedWorkerGlobalScope) {
 
 var HEADER = {
 	  NAME: 'lib.accounting.js'
-	, VERSION : '202404.001'
+	, VERSION : '202405.001'
 	, VERSION_EXT: 'no_lib'
 }
 
@@ -366,12 +371,12 @@ var createFactory = (header=HEADER) => {
 	const getBillableSessionsOfAPeriod = async function(sFrom, sTo, tFundings){
 		var oSessions = await ACCOUNTING.sessionsOfPeriod(sFrom, sTo);
 		await setFundings( oSessions,tFundings );
-		//console.log(s);
+
 		const cacheUserPath = new Map();
 		const aBillLines = [];
 		for (var i = 0, $i = oSessions.length; i < $i; i++) {
-			//console.log("session", s[i]);
 			const oSession = oSessions[i];
+			//console.log("getBillableSessionsOfAPeriod() -> je travaille sur la session %o", oSession);
 			if (oSession.type === 'mentoring') {
 				var iWho = oSession.whoId;
 				//console.log("Searching %d", iWho);
@@ -388,7 +393,7 @@ var createFactory = (header=HEADER) => {
 						(err) => console.log("Error in APIOC.getUserPaths(%o)", iWho);
 					}
 				}
-				//console.log("ai trouvé objet path", oPath)
+				//console.log("getBillableSessionsOfAPeriod() ->  ai trouvé l'objet path suivant %o", oPath)
 				// récuperer le nom de la clé qui est positionnée à true
 				//const sFinancialKey = Object.entries(oSession).find(([k, v]) => v === true)[0];
 				// version filtrée sur clé
@@ -403,45 +408,69 @@ var createFactory = (header=HEADER) => {
 					console.warn("Impossible de déterminer le financement de %s il(elle) est probablement absent(e) de votre fichier de financement (NOFUNDINGKEYFUNF)", oSession.who);
 					console.warn("Les résultats cumulés à partir de cet étudiant seront faux, c'est voulu");
 				}
-				const iPathId = oPath.id;
-				const iProjectId = oSession.projectId;
-				//console.log("iPathId %d, iProjectId iProjectId", iPathId, iProjectId);
-				const oPrices = await ACCOUNTING.getSessionLevels(iPathId, iProjectId);
-				//console.log(oPrices);
-				if (typeof oPrices !== 'undefined') {
-					//console.log("FALSE En base session level=%d => tableau ref level %d", oSession.pLvl, oPrices.expertise_new_level)
-					//console.log("FALSE En base session level=%d => tableau ref level %d", oSession.pMLvl, oPrices.expertise_new_level)
 
-					// suis pas bien sur en fait console.log("GOOD En base session (pPLvl) level=%d => tableau level=%d(EXPERTISE)", oSession.pPLvl, oPrices.expertise_new_level)
-					// comme je ne m'occupe que des sessions pour le moment
-					//console.log("Cette valeur peut etre a 0 je suppose que c'est dans le cas ou il n'y a pas de presentation")
-					//console.log("??? En base session (pLvl) level=%d => tableau ref level %d", oSession.pLvl, oPrices.project_new_level)
-					//console.log("???? En base session (pMLvl) level=%d => tableau ref level %d(PROJECT)", oSession.pMLvl, oPrices.project_new_level)
+				// il faut déjà controller si la session est annulée alors on peut oublier
+				// car elle n'apparait meme pas dans la liste des events
 
-					// en théorie
-					// let iPrice = oPrices.expertise_new_price; => a priori ça c'est la soutenance
-					let iPrice = oPrices.project_new_price;
-					let iLvl = oPrices.project_new_level || oSession.pMLvl;
-					if(iPrice === 0 || typeof iPrice === 'undefined'){
-						console.warn(" project_new_price is not set on official sheet fallback to data(pMLvl) in session");
-						iPrice = iGetPriceByLevelM(oSession.pMLvl);
+				if (oPath){
+					const iPathId = oPath.id;
+					const iProjectId = oSession.projectId;
+					//console.log("iPathId %d, iProjectId iProjectId", iPathId, iProjectId);
+					const oPrices = await ACCOUNTING.getSessionLevels(iPathId, iProjectId);
+					//console.log(oPrices);
+					if (typeof oPrices !== 'undefined') {
+						//console.log("FALSE En base session level=%d => tableau ref level %d", oSession.pLvl, oPrices.expertise_new_level)
+						//console.log("FALSE En base session level=%d => tableau ref level %d", oSession.pMLvl, oPrices.expertise_new_level)
+
+						// suis pas bien sur en fait console.log("GOOD En base session (pPLvl) level=%d => tableau level=%d(EXPERTISE)", oSession.pPLvl, oPrices.expertise_new_level)
+						// comme je ne m'occupe que des sessions pour le moment
+						//console.log("Cette valeur peut etre a 0 je suppose que c'est dans le cas ou il n'y a pas de presentation")
+						//console.log("??? En base session (pLvl) level=%d => tableau ref level %d", oSession.pLvl, oPrices.project_new_level)
+						//console.log("???? En base session (pMLvl) level=%d => tableau ref level %d(PROJECT)", oSession.pMLvl, oPrices.project_new_level)
+
+						// en théorie
+						// let iPrice = oPrices.expertise_new_price; => a priori ça c'est la soutenance
+						let iPrice = oPrices.project_new_price;
+						let iLvl = oPrices.project_new_level || oSession.pMLvl;
+						if(iPrice === 0 || typeof iPrice === 'undefined'){
+							console.warn(" project_new_price is not set on official sheet fallback to data(pMLvl) in session");
+							iPrice = iGetPriceByLevelM(oSession.pMLvl);
+						}
+						let fCoefStatus = fGetCoefByStatus(oSession.status);
+						let fCoefFinancial = fGetCoefByFinancial( oSession );
+						//console.log("Searching fCoefFinancial for :%s and get %f", oSession.who,  fCoefFinancial);
+						//console.log("(checked) Prix de base :%dx(%d%)x(%d%) = %.2f €", iPrice, fCoefStatus * 100, fCoefFinancial * 100, iPrice * fCoefStatus * fCoefFinancial)
+						const fTotal = roundToNearestCent( iPrice * fCoefStatus * fCoefFinancial );
+						const line = {
+							 basePrice: iPrice
+							,fCoefStatus
+							,fCoefFinancial
+							,total : fTotal
+							,tag: _generateUniqueKey(iLvl, oSession.type, sFinancialKey, oSession.status ) // iLvl, type, financial, status)
+							,text: `le ${oSession.when} ${oSession.who}(${oSession.whoId}) session de mentorat de niveau:${iLvl} : ${iPrice}x(${fCoefStatus*100}%)x(${fCoefFinancial*100}%) = ${fTotal} €`
+						}
+						aBillLines.push(line);
+
+					} else {
+						// utiliser les informations de la ligne
+						let iPrice = iGetPriceByLevelM(oSession.pMLvl);
+						let fCoefStatus = fGetCoefByStatus(oSession.status);
+						let fCoefFinancial = fGetCoefByFinancial( oSession );
+						//let fCoefFinancial = 1;
+						//console.log("(unchecked) Prix de base :%dx(%d%)x(%d%) = %.2f €", iPrice, fCoefStatus * 100, fCoefFinancial * 100, iPrice * fCoefStatus*fCoefFinancial);
+						const fTotal = roundToNearestCent( iPrice * fCoefStatus * fCoefFinancial );
+						const line = {
+							 basePrice: iPrice
+							,fCoefStatus
+							,fCoefFinancial
+							,total : fTotal
+							,tag: _generateUniqueKey(oSession.pMLvl, oSession.type, sFinancialKey, oSession.status ) // iLvl, type, financial, status)
+							,text: `le ${oSession.when} ${oSession.who}(${oSession.whoId}) session de mentorat de niveau:${oSession.pMLvl} : ${iPrice}x(${fCoefStatus*100}%)x(${fCoefFinancial*100}%) = ${fTotal} €`
+						}
+						aBillLines.push(line);
 					}
-					let fCoefStatus = fGetCoefByStatus(oSession.status);
-					let fCoefFinancial = fGetCoefByFinancial( oSession );
-					//console.log("Searching fCoefFinancial for :%s and get %f", oSession.who,  fCoefFinancial);
-					//console.log("(checked) Prix de base :%dx(%d%)x(%d%) = %.2f €", iPrice, fCoefStatus * 100, fCoefFinancial * 100, iPrice * fCoefStatus * fCoefFinancial)
-					const fTotal = roundToNearestCent( iPrice * fCoefStatus * fCoefFinancial );
-					const line = {
-						 basePrice: iPrice
-						,fCoefStatus
-						,fCoefFinancial
-						,total : fTotal
-						,tag: _generateUniqueKey(iLvl, oSession.type, sFinancialKey, oSession.status ) // iLvl, type, financial, status)
-						,text: `le ${oSession.when} ${oSession.who}(${oSession.whoId}) session de mentorat de niveau:${iLvl} : ${iPrice}x(${fCoefStatus*100}%)x(${fCoefFinancial*100}%) = ${fTotal} €`
-					}
-					aBillLines.push(line);
-
 				} else {
+					// pas de path mais je ne suis pas du coaching
 					// utiliser les informations de la ligne
 					let iPrice = iGetPriceByLevelM(oSession.pMLvl);
 					let fCoefStatus = fGetCoefByStatus(oSession.status);
