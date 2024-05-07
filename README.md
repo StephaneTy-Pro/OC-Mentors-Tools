@@ -78,7 +78,22 @@ Renvoie les informations vous concernant (sous réserve de droit d'y accéder)
 exemple
 ```js
 var r = await APIOC.getUser(7688561);
-// il s'agit de mon id
+// il s'agit ici de l'id de l'auteur à remplacer
+```
+
+#### APIOC.
+APIOC.getUserEvents(iId,iFrom,iTo)
+
+iId : (entier) le numéro d'identification de l'utilisateur recherché
+iFrom : index de départ dans la liste des données
+iTo: index de fin dans la liste des données
+(traitement recursif possible pour dépasser la limite de 20 retours oc)
+Renvoie la listes des sessions de l'étudiants
+
+exemple
+```js
+var r = await APIOC.getUserEvents(13342475);
+// sous réserve que j'ai accès aux informations de l'étudiant
 ```
 
 #### APIOC.getHistorySessionsBetween
@@ -108,6 +123,28 @@ Pour éviter des récursion infinies en cas de bug j'ai limité à 10 itération
 var u=await APIOC.getHistorySessionsBetween('2024-03-01','2024-03-31')
 // u contiendra la liste des sessions comprises entre ces deux dates
 ```
+
+#### APIOC.getSessionM
+
+APIOC.getSessionM(iId)
+
+Récuperer le détail d'une session de mentorat (id de sessions que l'on peut trouver dans les évenements de l'utilisateur)
+
+** exemple **
+
+```js
+var r = APIOC.getSessionM(2735156)
+// r contiendra un objet avec les propriété de la session sous réserve que vous ayez accès à cet étudiants ou ces informations
+// note se rapprocher de la liste des events pour l'id 
+// note l'id retourné est de la forme :  "mentorship-2735156"  mais ne prendre que le numéro
+
+```
+
+#### APIOC.getSessionP
+
+APIOC.getSessionP(iId)
+
+Récupérer le détail d'une session de soutenance (id de sessions que l'on peut trouver dans les evements de l'utilisateur)
 
 ### API ACCOUNTING
 
